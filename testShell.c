@@ -5,10 +5,6 @@
 #include <string.h>
 #include <fcntl.h>
 /*	
-	Michael Ulrich 
-	CS288-004      
-	Midterm Exam   
-	March 25, 2018 
 	----------------
 	Mini-Shell Modes
 	----------------
@@ -169,7 +165,7 @@ void redirectOutput(char ** arguments) {
        	}
 
 }
-//Hide output of backgroun command
+//Hide output of background command
 int executeCommand (char ** arguments) {
 	pid_t pid, wait;
 	int status;
