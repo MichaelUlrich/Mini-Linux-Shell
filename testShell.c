@@ -5,6 +5,10 @@
 #include <string.h>
 #include <fcntl.h>
 /*	
+	Michael Ulrich 
+	CS288-004      
+	Midterm Exam   
+	March 25, 2018 
 	----------------
 	Mini-Shell Modes
 	----------------
@@ -16,7 +20,7 @@ done	Interactive mode 	- launched with no other commands, provides a prompt for 
 	'barrier'	- shell stops accepting new commands until current is finished in interactive mound(cannot be executed in background with barrier&)
 			  in batch mode shell stops reading commands until all are executed
 done	'quit'		- shell stops accepting new commands and exits after executing remaining commands (will finish batch file before exiting)
-	'> /pathname' 	- redirects the output of the command into the file (in notes)
+done	'> /pathname' 	- redirects the output of the command into the file (in notes)
 done	'coommand&'	- command is executed in the background
 
 	Testing
@@ -43,8 +47,9 @@ char * builtinsList[] = { 	//Name of built-in functions
 	"exit",
 	"quit"
 };
-int REDIR_FLAG;			//Global variable to track if output will be redirected from stdout to a file
-int BACK_FLAG = FALSE;          //Global variable to track if process will run in backgroundi
+int BARR_FLAG = FALSE;			//Global variable to track if will force current process to wait for previous to finish
+int REDIR_FLAG = FALSE;			//Global variable to track if output will be redirected from stdout to a file
+int BACK_FLAG = FALSE;		        //Global variable to track if process will run in backgroundi
 int totalBuiltins() {
         return sizeof(builtinsList) / sizeof(char *);	//Return total amount of built-in functions
 }
@@ -112,6 +117,11 @@ char ** getArguments(char * command) {		//"**" To return array
 
 	token = strtok(command, "\t\n "); 	//Split by tab, new line, or space
 	while(token != NULL) {
+		if((strcmp(token, "barrier")) == 0) {
+			BARR_FLAG = TRUE;	//Barrier was found, will be forced to wait for previous processes to finish
+			printf("BARR_FLAG = TRUE\n");
+			i++;	
+		}
 		tokenArray[i] = token; 		//Pass token to token array
 		i++;
 		token = strtok(NULL, "\t\n ");	//Move through command
@@ -121,47 +131,45 @@ char ** getArguments(char * command) {		//"**" To return array
 }
 void redirectOutput(char ** arguments) {
         
-	int fd, i = 0, saveStdout, saveStderr;
-	char * path;						//Store path for execution
+	int fd, i = 0;
+	char * path;								//Store path for execution
 	while(arguments[i] != NULL) {
 		if(strcmp(arguments[i],">") == 0) {
-			path = arguments[i + 1];		//Get path from arguments
-			arguments = malloc((sizeof(char) * i));	//Re-size arguments array to exlucde unnecessary arguments
+			path = arguments[i + 1];				//Get path from arguments
+			arguments = realloc(arguments, (sizeof(char) * i));	//Re-size arguments array to exlucde unnecessary arguments 
+			arguments[i] = NULL;					//Terminate re-sized array with NULL
 			break;
 		}	
 		i++;
 	}
 	
-	fd  = open(path, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);   //Open file in read/write mode. Also creates the file if it does not exist (if it does truncate it's size to 0)
+	fd  = open(path, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR); 	//Open file in read/write mode. Also creates the file if it does not exist (if it does truncate it's size to 0)
 	
-//	saveStdout = dup(fileno(stdout));	//Saves stdout so that it can be reset later
-//	saveStderr = dup(fileno(stderr));	//Saves stderr so that it can be reset later
 	
-	if(fd < 0) {                            //Error check that fd was able to open bath
+	if(fd < 0) {								//Error check that fd was able to open bath
                 printf("'fd >': was un-able to open file entered\n");
 	}
 	
 	fflush(stdout);
 	
-	if((dup2(fd, STDOUT_FILENO)) < 0) {	//Error check for re-directing stdout
+	if((dup2(fd, STDOUT_FILENO)) < 0) {					//Error check for re-directing stdout
 		perror("Error redirecting stdout\n");
 	}
-/*	if((dup2(fd, STDERR_FILENO)) < 0) {	//Error check for re-directing stderr
+	if((dup2(fd, STDERR_FILENO)) < 0) {					//Error check for re-directing stderr
 		perror("Error redirecting stderr\n");    
 	}
-	if((dup2(fd, STDIN_FILENO)) < 0) {       //Error check for re-directing stdin
+	if((dup2(fd, STDIN_FILENO)) < 0) {     					//Error check for re-directing stdin
                 perror("Error redirecting stdin\n");
         }
-*/
-	
+
 	close(fd);	
 	printf("going to file");	
-        if(execvp(arguments[0], arguments) == -1) {     //Check if bad command
+        if(execvp(arguments[0], arguments) == -1) {     			//Check if bad command
         	perror("ERROR EXECUTING COMMAND\n");
        	}
+
 }
 //Hide output of backgroun command
-//Push redirected output to file
 int executeCommand (char ** arguments) {
 	pid_t pid, wait;
 	int status;
@@ -171,12 +179,12 @@ int executeCommand (char ** arguments) {
 	if(pid == 0) { 							//Child process	
 		if(REDIR_FLAG) {
 			redirectOutput(arguments);			//Redirecting outputs from stdout to user designated file
-		} else if (BACK_FLAG) {
+		/*} else if (BACK_FLAG && !BARR_FLAG) {			//Will only run in background if BACK_FLAG = TRUE && BARR_FLAG = FALSE
 			fd = open("/dev/null", O_WRONLY);		//Force output to be hidden
-			dup2(fd, 1);
+			dup2(fd, 1);					//*************************************************************************
 			dup2(fd, 2);
 			close(fd);
-			BACK_FLAG = FALSE;
+			BACK_FLAG = FALSE;*/
 			
 		} else {
 			if(execvp(arguments[0], arguments) == -1) {	//Bad command
@@ -187,15 +195,15 @@ int executeCommand (char ** arguments) {
 	} else if (pid < 0) { 						//Error forking
 		perror("ERROR FORKING\n");
 	} else { 							//Parent process
-		if(!BACK_FLAG) {					//Foreground Process
+		if(!BACK_FLAG || BARR_FLAG) {				//Foreground Process - Will run in foreground if BACK_FLAG = FALSE || BARR_FLAG = TRUE
 			do {	
 				wait = waitpid(pid, &status, WUNTRACED);
 				REDIR_FLAG = FALSE;
+				BARR_FLAG = FALSE;
 			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 		} else {						//Background Process - Do not wait for child, run in background
 			//Hide output
-			BACK_FLAG = FALSE;				//Reset BACK_FLAG to allow next process to potentially run in foreground
-			setpgid(0,0);
+			BACK_FLAG = FALSE;				//Reset BACK_FLAG to allow next process to potentially run in foreground	
 		}		
 	}
 	return 1;
