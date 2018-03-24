@@ -17,7 +17,7 @@ done	Interactive mode 	- launched with no other commands, provides a prompt for 
 			  in batch mode shell stops reading commands until all are executed
 done	'quit'		- shell stops accepting new commands and exits after executing remaining commands (will finish batch file before exiting)
 done	'> /pathname' 	- redirects the output of the command into the file (in notes)
-done	'coommand&'	- command is executed in the background
+	'coommand&'	- command is executed in the background
 
 	Testing
 	---------------
