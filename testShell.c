@@ -5,10 +5,6 @@
 #include <string.h>
 #include <fcntl.h>
 /*	
-	Michael Ulrich 
-	CS288-004      
-	Midterm Exam   
-	March 25, 2018 
 	----------------
 	Mini-Shell Modes
 	----------------
