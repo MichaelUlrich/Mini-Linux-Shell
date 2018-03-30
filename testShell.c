@@ -5,6 +5,10 @@
 #include <string.h>
 #include <fcntl.h>
 /*	
+	Michael Ulrich 
+	CS288-004      
+	Midterm Exam   
+	March 25, 2018 
 	----------------
 	Mini-Shell Modes
 	----------------
@@ -17,7 +21,7 @@ done	Interactive mode 	- launched with no other commands, provides a prompt for 
 			  in batch mode shell stops reading commands until all are executed
 done	'quit'		- shell stops accepting new commands and exits after executing remaining commands (will finish batch file before exiting)
 done	'> /pathname' 	- redirects the output of the command into the file (in notes)
-	'coommand&'	- command is executed in the background
+done	'coommand&'	- command is executed in the background
 
 	Testing
 	---------------
@@ -26,7 +30,7 @@ done	Extra white spaces			- process command properly 			(non-error)
 	Batch file with no quit command		- properly procces batch file with EOF flag	(non-error)
 done	Command does not exist 			- display stderr and continue processing 	(error/continue)
 done	Incorrenct number of command arguments 	- display stderr and exit			(error/exit)
-	batch file does not exist 		- display stderr and exit			(error/exit)
+done	batch file does not exist 		- display stderr and exit			(error/exit)
 	
 	Goal
 	--------------
@@ -78,28 +82,45 @@ int (*builtinFunctions[]) (char**) = { 	//Addresses of built-in shell functions
         &exitShell,
 	&exitShell			//quit and exit do the same thing
 };
-char * readCommand() {
+char * readCommand(char * batchCommand) {
 	int i = 0, character;
 	char * buffer = malloc((sizeof(char) * MAX_COMMAND));
 	if(buffer == 0 ) {
 		perror("ERROR ALLOCATING BUFFER(1). EXITING...\n");
 		exit(EXIT_FAILURE);
 	}
-
-	while(TRUE) {
-		character = getchar();									//Read by character
-		if(character == EOF || character == '\n') {						//Check for end of file or new line
-			buffer[i] = '\0';								//Terminate with NULL character
-			return buffer;									//Return terminated buffer of characters
-		} else if (character == '&') {								//'&' found in command, will run in background
-			printf("BACK_FLAG = TRUE\n");	
-			BACK_FLAG = TRUE;								//Will be used trigger background processing in executeComamnd() 
-		} else if (character == '>') {								//'>' found int command, will redirect output to file
-			printf("REDIR_FLAG = TRUE\n");
-			buffer[i] = character;					
-			REDIR_FLAG = TRUE;								//Will be used to trigger output redirecting in executeCommand()	
-		} else { buffer[i] = character; }							//Add character to buffer
-		i++;
+	if(batchCommand == NULL) {					//If in Interactive Mode
+		while(TRUE) {
+			character = getchar();				//Read by character
+			if(character == EOF || character == '\n') {	//Check for end of file or new line
+				buffer[i] = '\0';			//Terminate with NULL character
+				return buffer;				//Return terminated buffer of characters
+			} else if (character == '&') {			//'&' found in command, will run in background
+				//printf("BACK_FLAG = TRUE\n");	
+				BACK_FLAG = TRUE;			//Will be used trigger background processing in executeComamnd() 
+			} else if (character == '>') {			//'>' found int command, will redirect output to file
+				//printf("REDIR_FLAG = TRUE\n");
+				buffer[i] = character;					
+				REDIR_FLAG = TRUE;			//Will be used to trigger output redirecting in executeCommand()	
+			} else { buffer[i] = character; }		//Add character to buffer
+			i++;
+		}
+	} else {
+		while(TRUE) {						//Else in Batch Mode            
+                        character = batchCommand[i];
+			if(character == EOF || character == '\n') {                                             
+	                        buffer[i] = '\0';                                                               
+                                return buffer;                                                                  
+                        } else if (character == '&') {                                                          
+                                //printf("BACK_FLAG = TRUE\n"); 
+                                BACK_FLAG = TRUE;                                                                
+                        } else if (character == '>') {                                                          
+                                //printf("REDIR_FLAG = TRUE\n");
+                                buffer[i] = character;
+                                REDIR_FLAG = TRUE;                                                                      
+                        } else { buffer[i] = batchCommand[i]; }                                                       
+                        i++;
+		}
 	}
 }
 char ** getArguments(char * command) {		//"**" To return array
@@ -114,8 +135,7 @@ char ** getArguments(char * command) {		//"**" To return array
 	token = strtok(command, "\t\n "); 	//Split by tab, new line, or space
 	while(token != NULL) {
 		if((strcmp(token, "barrier")) == 0) {
-			BARR_FLAG = TRUE;	//Barrier was found, will be forced to wait for previous processes to finish
-			printf("BARR_FLAG = TRUE\n");
+			BARR_FLAG = TRUE;	//Barrier was found, will be forced to wait for previous processes to finish	
 			i++;	
 		}
 		tokenArray[i] = token; 		//Pass token to token array
@@ -131,8 +151,7 @@ void redirectOutput(char ** arguments) {
 	char * path;								//Store path for execution
 	while(arguments[i] != NULL) {
 		if(strcmp(arguments[i],">") == 0) {
-			path = arguments[i + 1];				//Get path from arguments
-			arguments = realloc(arguments, (sizeof(char) * i));	//Re-size arguments array to exlucde unnecessary arguments 
+			path = arguments[i + 1];				//Get path from arguments 
 			arguments[i] = NULL;					//Terminate re-sized array with NULL
 			break;
 		}	
@@ -165,7 +184,6 @@ void redirectOutput(char ** arguments) {
        	}
 
 }
-//Hide output of background command
 int executeCommand (char ** arguments) {
 	pid_t pid, wait;
 	int status;
@@ -175,13 +193,6 @@ int executeCommand (char ** arguments) {
 	if(pid == 0) { 							//Child process	
 		if(REDIR_FLAG) {
 			redirectOutput(arguments);			//Redirecting outputs from stdout to user designated file
-		/*} else if (BACK_FLAG && !BARR_FLAG) {			//Will only run in background if BACK_FLAG = TRUE && BARR_FLAG = FALSE
-			fd = open("/dev/null", O_WRONLY);		//Force output to be hidden
-			dup2(fd, 1);					//*************************************************************************
-			dup2(fd, 2);
-			close(fd);
-			BACK_FLAG = FALSE;*/
-			
 		} else {
 			if(execvp(arguments[0], arguments) == -1) {	//Bad command
 				perror("ERROR EXECUTING COMMAND\n");
@@ -191,11 +202,11 @@ int executeCommand (char ** arguments) {
 	} else if (pid < 0) { 						//Error forking
 		perror("ERROR FORKING\n");
 	} else { 							//Parent process
-		if(!BACK_FLAG || BARR_FLAG) {				//Foreground Process - Will run in foreground if BACK_FLAG = FALSE || BARR_FLAG = TRUE
+		if(!BACK_FLAG) {					//Foreground Process - Will run in foreground if BACK_FLAG = FALSE || BARR_FLAG = TRUE
 			do {	
-				wait = waitpid(pid, &status, WUNTRACED);
-				REDIR_FLAG = FALSE;
-				BARR_FLAG = FALSE;
+			wait = waitpid(pid, &status, WUNTRACED);
+			REDIR_FLAG = FALSE;
+			//BARR_FLAG = FALSE;
 			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 		} else {						//Background Process - Do not wait for child, run in background
 			//Hide output
@@ -222,19 +233,44 @@ void shellLoop() {
 
 	while(status) {
 		printf("shell$>");			//Print shell prompt
-		command = readCommand();		//Get command from user input	
+		command = readCommand(NULL);		//Get command from user input - passing NULL since not in Batch Mode	
 		arguments = getArguments(command);	//Seperate arguments from command	
 		status = startCommand(arguments);	//Execute function with arguments
 	}
+}
+void batchLoop(char * batchPath) {
+	FILE * fd;
+	int status = 1;
+	char * command, **arguments;
+	size_t len;
+	ssize_t totalRead;
+	
+	fd = fopen(batchPath, "r");	//Open batchPath in read mode
+	if(fd == NULL) {
+		printf("Error opening batch file\n");
+		exit(EXIT_FAILURE);
+	} else {  
+		while((totalRead = getline(&command, &len, fd)) != -1) {	//Read batch file by line
+			readCommand(command);					//Set flags in command
+			arguments = getArguments(command);			//Seperate arguments from command
+			status = startCommand(arguments);			//Execute function with arguments
+			if(status < 1) {
+				perror("Error executing batch file. Exiting...\n");
+			}
+		}
+	} 
 }
 int main(int argc, char * argv[], char * envp[]) {
 	char* batchPath;
 	
 	if(argc == 1) { 				//Interactive Mode
 		shellLoop();
-	} else {					//BATCH MODE
-		batchPath = argv[1];
-		printf("%s\n", batchPath);		//Read commands from file
+	} else if (argc == 2)  {			//Batch Mode
+		batchPath = argv[1];			//Read commands from file
+		batchLoop(batchPath);
+	} else {
+		printf("TOO MANY COMMANDS TO LAUNCH SHELL. EXITING...\n");
+		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
-}	
+}
