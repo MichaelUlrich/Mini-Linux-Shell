@@ -71,7 +71,8 @@ int cdShell(char ** arguments) { 			//Built-in Change Directory function
 	return 1;
 }
 int exitShell(char ** arguments) { 	//Built-in exit function
-	return 0;	
+	printf("EXIT COMMAND CALLED. Goodbye\n");
+	exit(EXIT_SUCCESS);
 }
 int (*builtinFunctions[]) (char**) = { 	//Addresses of built-in shell functions
         &cdShell,
