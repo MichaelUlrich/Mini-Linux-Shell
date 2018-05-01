@@ -23,7 +23,7 @@ done	'coommand&'	- command is executed in the background
 	-------------------
 done	Empty Command line			- just presents a new prompt line 		(non-error)
 done	Extra white spaces			- process command properly 			(non-error)
-	Batch file with no quit command		- properly procces batch file with EOF flag	(non-error)
+done	Batch file with no quit command		- properly procces batch file with EOF flag	(non-error)
 done	Command does not exist 			- display stderr and continue processing 	(error/continue)
 done	Incorrenct number of command arguments 	- display stderr and exit			(error/exit)
 done	batch file does not exist 		- display stderr and exit			(error/exit)
